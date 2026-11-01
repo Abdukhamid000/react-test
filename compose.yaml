@@ -1,20 +1,31 @@
-services:
-  react-prod:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: docker-reactjs-sample
-    ports:
-      - "8080:8080"
+version: "3.8"
 
-  react-dev:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+services:
+  react-app:
+    build: ./my-app
+    restart: always
+    networks:
+      - app-net
+
+  nginx:
+    image: nginx:alpine
+    restart: always
     ports:
-      - "5173:5173"
-    develop:
-      watch:
-        - action: sync
-          path: .
-          target: /app
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      # We will mount SSL certificates here later
+      # - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - react-app
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+  - /etc/nginx/ssl:/etc/nginx/ssl:ro

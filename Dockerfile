@@ -1,13 +1,25 @@
-# Stage 1: Build the React application
-FROM node:22-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
+ARG NODE_VERSION=24
 
-# Stage 2: Serve the app using Nginx
+FROM node:${NODE_VERSION}-alpine as builder
+
+RUN corepack enable
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml* ./
+
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+
+COPY . .
+
+RUN pnpm build
+
 FROM nginx:alpine
-COPY --from=builder /app/build /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+
+COPY nginx/default.conf /etc/nginx/nginx.conf
+
+COPY --chown=nginx:nginx --from=builder /app/dist /usr/share/nginx/html
+
+ENTRYPOINT ["nginx", "-c", "/etc/nginx/nginx.conf"]
+CMD ["-g", "daemon off;"]
+
